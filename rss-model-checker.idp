@@ -1,0 +1,287 @@
+vocabulary V{
+type Time isa nat
+Start: Time
+Stop: Time
+
+type Type_Yes_No constructed from {yes,no}
+type Type_Sign constructed from {negative,zero,positive}
+
+S_dangerous_front(Time) : Type_Yes_No
+S_dangerous_back(Time) : Type_Yes_No
+S_dangerous_left(Time) : Type_Yes_No
+S_dangerous_right(Time) : Type_Yes_No
+S_being_cut_in(Time) : Type_Yes_No
+S_longitudinal_velocity(Time) : Type_Sign
+S_lateral_velocity(Time) : Type_Sign
+
+A_longitudinal_brake(Time)
+A_longitudinal_evasive_brake(Time)
+A_lateral_brake(Time)
+A_lateral_evasive_brake(Time)
+A_longitudinal_accel_leq_0(Time)
+A_lateral_accel_leq_0(Time)
+A_lateral_accel_geq_0(Time)
+    
+    type AccelerationCommand isa int
+    u_lon(Time): AccelerationCommand
+    u_lat(Time): AccelerationCommand
+
+    type BrakeBound isa int
+    a_lon_min_brake: BrakeBound
+    a_lat_min_brake: BrakeBound
+    a_lon_min_brake_evasive: BrakeBound
+    a_lat_min_brake_evasive: BrakeBound
+    
+}
+
+structure S:V{
+    Time = {0..9}
+    AccelerationCommand = {-9..9}
+    BrakeBound = {1..9}
+}
+ 
+
+theory TimeTheory : V{
+    { 
+        Start = MIN[:Time].
+        Stop = MAX[:Time].
+    }
+}
+
+theory Assumption1 : V {
+    // definition of being cut in
+    !t[Time]: S_being_cut_in(t) = yes => (S_dangerous_left(t) = yes | S_dangerous_right(t) = yes).
+}
+
+theory Assumption2 : V {
+    !t[Time]: A_longitudinal_brake(t) => u_lon(t) =< -a_lon_min_brake.
+}
+
+theory Assumption3 : V {
+    !t[Time]: A_longitudinal_evasive_brake(t) => u_lon(t) =< -a_lon_min_brake_evasive.
+}
+
+theory Assumption4 : V {
+    !t[Time]: A_lateral_brake(t) => 
+        (
+            (S_lateral_velocity(t) = positive => u_lat(t) =< -a_lat_min_brake) &
+            (S_lateral_velocity(t) = negative => u_lat(t) >= a_lat_min_brake) &
+            (S_lateral_velocity(t) = zero => u_lat(t) = 0)
+        ).
+}
+
+theory Assumption5 : V {
+    !t[Time]: A_lateral_evasive_brake(t) => 
+        (
+            (S_lateral_velocity(t) = positive => u_lat(t) =< -a_lat_min_brake_evasive) &
+            (S_lateral_velocity(t) = negative => u_lat(t) >= a_lat_min_brake_evasive) &
+            (S_lateral_velocity(t) = zero => u_lat(t) = 0)
+        ).
+}
+
+theory Assumption6 : V {
+    !t[Time]: A_longitudinal_accel_leq_0(t) => u_lon(t) =< 0.
+}
+
+theory Assumption7 : V {
+    !t[Time]: A_lateral_accel_leq_0(t) => u_lat(t) =< 0.
+}
+
+theory Assumption8 : V {
+    !t[Time]: A_lateral_accel_geq_0(t) => u_lat(t) >= 0.
+}
+
+theory Assumption9 : V {
+    a_lon_min_brake_evasive =< a_lon_min_brake.
+}
+
+theory Assumption10 : V {
+    a_lat_min_brake_evasive =< a_lat_min_brake.
+}
+
+theory Property1_1 : V {
+    // def. 4.1: longitudinal unsafe - brake
+    // we only consider the case when two cars are driving in the same direction
+
+    // when the ego car is the rear car
+    ~(!t[Time]:
+       (
+           S_dangerous_front(t) = yes &
+           S_longitudinal_velocity(t) = positive
+       ) => u_lon(t) =< -a_lon_min_brake
+    ).
+}
+
+theory Property1_2 : V {
+    // after reaching full stop, the rear car can only apply non-positive acceleration
+	~(!t[Time]:
+       (
+           S_dangerous_front(t) = yes &
+           S_longitudinal_velocity(t) ~= positive
+       ) => u_lon(t) =< 0
+    ).
+}
+
+theory Property2_1 : V {
+    // definition 9.2
+    // def. 9.2
+    
+    // brake when the ego car is the left car
+    ~(!t[Time]:
+       (
+           S_dangerous_right(t) = yes &
+           S_lateral_velocity(t) = positive
+       ) => u_lat(t) =< -a_lat_min_brake
+    ).
+}
+
+theory Property2_2 : V {
+    // after reaching 0 u-lateral velocity, can have any non-positive lateral velocity
+    ~(!t[Time]: 
+       (
+           S_dangerous_right(t) = yes &
+           S_lateral_velocity(t) = zero
+       ) => u_lat(t) =< 0
+    ).
+}
+
+theory Property3_1 : V {
+    // brake when the ego car is the right car
+    ~(!t[Time]:
+       (
+           S_dangerous_left(t) = yes &
+           S_lateral_velocity(t) = negative
+       ) => u_lat(t) >= a_lat_min_brake
+    ).
+}
+
+theory Property3_2 : V {
+    // after reaching 0 u-lateral-velocity, can have any non-negative lateral velocity
+    ~(!t[Time]:
+       (
+           S_dangerous_left(t) = yes &
+           S_lateral_velocity(t) = zero
+       ) => u_lat(t) >= 0
+    ).
+}
+
+theory Property4 : V {
+    // definition 9.3
+    // front car should try to reach 0 u-lat-velocity if before blame time there was a safe longitudinal distance
+    ~(!t[Time]:
+       (
+           S_dangerous_back(t) = yes
+       ) => 
+       (
+           (S_lateral_velocity(t) = positive => u_lat(t) =< -a_lat_min_brake_evasive) &
+           (S_lateral_velocity(t) = negative => u_lat(t) >= a_lat_min_brake_evasive) &
+           (S_lateral_velocity(t) = zero => u_lat(t) = 0)
+       )
+    ).
+}
+
+theory Property5 : V {
+    // evasive brake after cut-in time
+    ~(!t[Time]: 
+       (
+           S_being_cut_in(t) = yes &
+           S_longitudinal_velocity(t) = positive
+       ) => u_lon(t) =< -a_lon_min_brake_evasive).
+}
+
+theory Property6_1 : V {
+    // parallel execution properties
+    ~(!t[Time]: #(A_longitudinal_brake(t), A_longitudinal_evasive_brake(t), A_longitudinal_accel_leq_0(t)) =< 1).
+}
+
+theory Property6_2 : V{
+    ~(!t[Time]: #(A_lateral_brake(t), A_lateral_evasive_brake(t), A_lateral_accel_leq_0(t), A_lateral_accel_geq_0(t)) =< 1).
+}
+
+include "rss-policy-theory.idp"
+include "util.idp"
+
+procedure main(){   
+    problems = {
+        properties = {
+            Property1_1, 
+            Property1_2,
+            Property2_1,
+            Property2_2,
+            Property3_1,
+            Property3_2,
+            Property4,
+            Property5,
+            Property6_1,
+            Property6_2
+        },
+        assumptions = {
+            Assumption1,
+            Assumption2,
+            Assumption3,
+            Assumption4,
+            Assumption5,
+            Assumption6,
+            Assumption7,
+            Assumption8,
+            Assumption9,
+            Assumption10
+        }
+    }
+
+    check_models(problems)
+    check_minimality(problems)
+}
+
+procedure check_models(problems) {
+    local file = io.open("rss-times.txt", "w")
+    io.output(file)
+
+    for _, property in ipairs(problems["properties"]) do
+        print("Checking " .. getname(property))
+        models, duration = generate_models(property, problems["assumptions"])
+
+        if #models ~= 0 then
+            print("The following property is violated: \n")
+            print(property)
+            printmodels(models)
+            break
+        else
+            print(getname(property) .. " is correct.")
+        end
+
+        io.write(getname(property), ": ", duration, "\n")
+    end
+
+    io.close(file)
+}
+
+procedure check_minimality(problems) {
+    // not minimal if an assumption is deactivated and at least a property is violated
+    // we check each assumption
+    redundant_assumptions = {}
+    for i, assumption in ipairs(problems["assumptions"]) do
+        print("Checking minimality: " .. getname(assumption))
+        // remove that assumption
+        assumptions = clone_table(problems["assumptions"])
+        table.remove(assumptions, i)
+        // we check for each property. If at least a property is violated then the assumption is necessary
+        local at_least_a_property_is_violated = false
+        for _, property in ipairs(problems["properties"]) do
+            models, _ = generate_models(property, assumptions)
+            if #models ~= 0 then
+                at_least_a_property_is_violated = true
+                break
+            end
+        end
+        if not(at_least_a_property_is_violated) then
+            print("The following assumption is redundant.")
+            print(assumption)
+            table.insert(redundant_assumptions, assumption)
+        end
+    end
+
+    if table.getn(redundant_assumptions) == 0 then
+        print("The set of assumptions is minimal")
+    end
+}

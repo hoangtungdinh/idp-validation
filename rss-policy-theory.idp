@@ -1,0 +1,39 @@
+theory PolicyTheory: V{
+{
+    !t[Time]: A_longitudinal_brake(t) <- S_dangerous_front(t) = yes[:Type_Yes_No] & S_dangerous_left(t) = yes[:Type_Yes_No] & S_longitudinal_velocity(t) = positive[:Type_Sign].
+    !t[Time]: A_longitudinal_brake(t) <- S_dangerous_front(t) = yes[:Type_Yes_No] & S_dangerous_right(t) = yes[:Type_Yes_No] & S_longitudinal_velocity(t) = positive[:Type_Sign].
+    !t[Time]: A_longitudinal_brake(t) <- S_dangerous_front(t) = yes[:Type_Yes_No] & S_being_cut_in(t) = no[:Type_Yes_No] & S_longitudinal_velocity(t) = positive[:Type_Sign].
+}
+{
+    !t[Time]: A_longitudinal_evasive_brake(t) <- S_dangerous_front(t) = no[:Type_Yes_No] & S_dangerous_left(t) = yes[:Type_Yes_No] & S_being_cut_in(t) = yes[:Type_Yes_No] & S_longitudinal_velocity(t) = positive[:Type_Sign].
+    !t[Time]: A_longitudinal_evasive_brake(t) <- S_dangerous_front(t) = no[:Type_Yes_No] & S_dangerous_right(t) = yes[:Type_Yes_No] & S_being_cut_in(t) = yes[:Type_Yes_No] & S_longitudinal_velocity(t) = positive[:Type_Sign].
+}
+{
+    !t[Time]: A_lateral_brake(t) <- S_dangerous_left(t) = yes[:Type_Yes_No] & S_lateral_velocity(t) = negative[:Type_Sign].
+    !t[Time]: A_lateral_brake(t) <- S_dangerous_right(t) = yes[:Type_Yes_No] & S_lateral_velocity(t) = positive[:Type_Sign].
+    !t[Time]: A_lateral_brake(t) <- S_dangerous_left(t) = yes[:Type_Yes_No] & S_dangerous_right(t) = yes[:Type_Yes_No].
+}
+{
+    !t[Time]: A_lateral_evasive_brake(t) <- S_dangerous_back(t) = yes[:Type_Yes_No] & S_dangerous_left(t) = no[:Type_Yes_No] & S_dangerous_right(t) = yes[:Type_Yes_No] & S_lateral_velocity(t) = negative[:Type_Sign].
+    !t[Time]: A_lateral_evasive_brake(t) <- S_dangerous_back(t) = yes[:Type_Yes_No] & S_dangerous_left(t) = no[:Type_Yes_No] & S_dangerous_right(t) = yes[:Type_Yes_No] & S_lateral_velocity(t) = zero[:Type_Sign].
+    !t[Time]: A_lateral_evasive_brake(t) <- S_dangerous_back(t) = yes[:Type_Yes_No] & S_dangerous_left(t) = no[:Type_Yes_No] & S_dangerous_right(t) = no[:Type_Yes_No] & S_being_cut_in(t) = no[:Type_Yes_No].
+    !t[Time]: A_lateral_evasive_brake(t) <- S_dangerous_back(t) = yes[:Type_Yes_No] & S_dangerous_left(t) = yes[:Type_Yes_No] & S_dangerous_right(t) = no[:Type_Yes_No] & S_lateral_velocity(t) = zero[:Type_Sign].
+    !t[Time]: A_lateral_evasive_brake(t) <- S_dangerous_back(t) = yes[:Type_Yes_No] & S_dangerous_left(t) = yes[:Type_Yes_No] & S_dangerous_right(t) = no[:Type_Yes_No] & S_lateral_velocity(t) = positive[:Type_Sign].
+}
+{
+    !t[Time]: A_longitudinal_accel_leq_0(t) <- S_dangerous_left(t) = yes[:Type_Yes_No] & S_being_cut_in(t) = yes[:Type_Yes_No] & S_longitudinal_velocity(t) = negative[:Type_Sign].
+    !t[Time]: A_longitudinal_accel_leq_0(t) <- S_dangerous_left(t) = yes[:Type_Yes_No] & S_being_cut_in(t) = yes[:Type_Yes_No] & S_longitudinal_velocity(t) = zero[:Type_Sign].
+    !t[Time]: A_longitudinal_accel_leq_0(t) <- S_dangerous_right(t) = yes[:Type_Yes_No] & S_being_cut_in(t) = yes[:Type_Yes_No] & S_longitudinal_velocity(t) = negative[:Type_Sign].
+    !t[Time]: A_longitudinal_accel_leq_0(t) <- S_dangerous_right(t) = yes[:Type_Yes_No] & S_being_cut_in(t) = yes[:Type_Yes_No] & S_longitudinal_velocity(t) = zero[:Type_Sign].
+    !t[Time]: A_longitudinal_accel_leq_0(t) <- S_dangerous_front(t) = yes[:Type_Yes_No] & S_being_cut_in(t) = no[:Type_Yes_No] & S_longitudinal_velocity(t) = negative[:Type_Sign].
+    !t[Time]: A_longitudinal_accel_leq_0(t) <- S_dangerous_front(t) = yes[:Type_Yes_No] & S_being_cut_in(t) = no[:Type_Yes_No] & S_longitudinal_velocity(t) = zero[:Type_Sign].
+}
+{
+    !t[Time]: A_lateral_accel_leq_0(t) <- S_dangerous_back(t) = no[:Type_Yes_No] & S_dangerous_left(t) = no[:Type_Yes_No] & S_dangerous_right(t) = yes[:Type_Yes_No] & S_lateral_velocity(t) = negative[:Type_Sign].
+    !t[Time]: A_lateral_accel_leq_0(t) <- S_dangerous_back(t) = no[:Type_Yes_No] & S_dangerous_left(t) = no[:Type_Yes_No] & S_dangerous_right(t) = yes[:Type_Yes_No] & S_lateral_velocity(t) = zero[:Type_Sign].
+}
+{
+    !t[Time]: A_lateral_accel_geq_0(t) <- S_dangerous_back(t) = no[:Type_Yes_No] & S_dangerous_left(t) = yes[:Type_Yes_No] & S_dangerous_right(t) = no[:Type_Yes_No] & S_lateral_velocity(t) = zero[:Type_Sign].
+    !t[Time]: A_lateral_accel_geq_0(t) <- S_dangerous_back(t) = no[:Type_Yes_No] & S_dangerous_left(t) = yes[:Type_Yes_No] & S_dangerous_right(t) = no[:Type_Yes_No] & S_lateral_velocity(t) = positive[:Type_Sign].
+}
+}

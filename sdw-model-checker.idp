@@ -1,0 +1,340 @@
+vocabulary V{
+type Time isa nat
+k: Time
+
+// loop
+l_start: Time
+Next(Time) : Time
+Loop(Time)
+
+type Type_S_at_landing_position constructed from {yes,unknown,no}
+type Type_S_communication constructed from {stable,lost,degraded}
+type Type_S_mission_abort_request constructed from {yes,no}
+type Type_S_battery constructed from {low,critical,ok}
+type Type_S_manual_control_request constructed from {off,on}
+type Type_S_being_blocked_notification constructed from {notified,not_yet_notified}
+type Type_S_critical_battery_notification constructed from {notified,not_yet_notified}
+type Type_S_pylon_inspection constructed from {complete,not_complete}
+type Type_S_obstacle_detection constructed from {stable,lost}
+type Type_S_flying constructed from {flying,on_the_ground}
+type Type_S_mission_configuration constructed from {not_configured,configured}
+type Type_S_low_battery_notification constructed from {notified,not_yet_notified}
+type Type_S_obstacle_detection_failure_notification constructed from {notified,not_yet_notified}
+type Type_S_communication_failure_notification constructed from {notified,not_yet_notified}
+type Type_S_mission_started constructed from {yes,no}
+type Type_S_being_blocked constructed from {yes,no}
+
+S_at_landing_position(Time) : Type_S_at_landing_position
+S_communication(Time) : Type_S_communication
+S_mission_abort_request(Time) : Type_S_mission_abort_request
+S_battery(Time) : Type_S_battery
+S_manual_control_request(Time) : Type_S_manual_control_request
+S_being_blocked_notification(Time) : Type_S_being_blocked_notification
+S_critical_battery_notification(Time) : Type_S_critical_battery_notification
+S_pylon_inspection(Time) : Type_S_pylon_inspection
+S_obstacle_detection(Time) : Type_S_obstacle_detection
+S_flying(Time) : Type_S_flying
+S_mission_configuration(Time) : Type_S_mission_configuration
+S_low_battery_notification(Time) : Type_S_low_battery_notification
+S_obstacle_detection_failure_notification(Time) : Type_S_obstacle_detection_failure_notification
+S_communication_failure_notification(Time) : Type_S_communication_failure_notification
+S_mission_started(Time) : Type_S_mission_started
+S_being_blocked(Time) : Type_S_being_blocked
+
+take_off(Time)
+land(Time)
+go_to_landing_zone(Time)
+manual_control(Time)
+execute_mission_task(Time)
+configure_mission(Time)
+wait_for_start(Time)
+notify_being_blocked(Time)
+notify_communication_failure(Time)
+notify_low_battery(Time)
+notify_critical_battery(Time)
+notify_obstacle_detection_failure(Time)
+reset_being_blocked_notification_status(Time)
+reset_communication_failure_notification_status(Time)
+reset_low_battery_notification_status(Time)
+reset_critical_battery_notification_status(Time)
+reset_obstacle_detection_failure_notification_status(Time)
+}
+
+structure S:V{
+    Time = {0..9}
+}
+ 
+
+theory TimeTheory : V{
+    { 
+        k = MAX[:Time].
+    }
+}
+
+theory Property_1 : V{
+    // property: always land at landing zone
+    ~(!t[Time]: S_flying(t) = on_the_ground => S_at_landing_position(t) = yes).
+}
+
+theory Assumption_1_1 : V{
+    // at the beginning, not landing out of the landing zone
+    ~(S_flying(0) = on_the_ground & S_at_landing_position(0) ~= yes).
+}
+
+theory Assumption_1_2 : V{
+    // have full control over S_flying
+    !t[Time] : (t < k & S_flying(t) ~= S_flying(t + 1)) => (take_off(t) | land(t)).
+}
+
+theory Assumption_1_3 : V{
+    // the UAV can only change his location by flying. No one would drag the UAV from one location to another location.
+    !t[Time]: 
+        (
+            t < k &
+            S_at_landing_position(t) ~= unknown &
+            S_at_landing_position(t) ~= S_at_landing_position(t + 1)
+        ) => 
+        (
+            S_flying(t) = flying &
+            S_flying(t + 1) = flying
+        ).
+}
+
+theory Property_2 : V{
+    // property: never fly without permission
+    ~(!t[Time]: S_mission_started(t) = no => S_flying(t) = on_the_ground).
+}
+
+theory Assumption_2_1 : V{
+    // at the beginning, not already flying without permission
+    ~(S_flying(0) = flying & S_mission_started(0) = no).
+}
+
+theory Assumption_2_2 : V{
+    // UAV can only fly by executing the take off action
+    !t[Time]: (t < k & S_flying(t) = on_the_ground & S_flying(t + 1) = flying) => take_off(t).
+}
+
+theory Assumption_2_3 : V{
+    // once the permisison has been given, it should never be taken back.
+    !t[Time]: (t < k & S_mission_started(t) = yes) => S_mission_started(t + 1) = yes.
+}
+
+theory Property_3 : V{
+    // if the battery is low, try to notify the human operator until he gets the notification
+    ~(!t[Time]: (S_battery(t) = low & S_low_battery_notification(t) = not_yet_notified[:Type_S_low_battery_notification]) => notify_low_battery(t)).
+}
+
+theory Assumption_3_1 : V{
+    !t[Time] : S_mission_configuration(t) = not_configured <=> S_at_landing_position(t) = unknown.
+}
+
+theory Assumption_3_2 : V{
+    !t[Time]: S_communication(t) ~= lost[:Type_S_communication].
+}
+
+theory Property_4 : V{
+    // The UAV should eventually complete the inspection
+    ~(?t[Time] : S_pylon_inspection(t) = complete).
+
+    // definition of Next(Time) with a loop
+    {
+        !t: Next(t) = t + 1 <- Time(t + 1).
+        Next(k) = l_start.
+    }
+    {
+        !t: Loop(t) <- l_start =< t =< k.
+    }
+}
+
+theory Assumption_4_1 : V{
+    ~(!t[Time]: Loop(t) => (execute_mission_task(t) & S_being_blocked(t) = no & S_pylon_inspection(Next(t)) ~= complete)).
+}
+
+theory Assumption_4_2 : V{
+    ~(!t[Time]: Loop(t) => (take_off(t) & S_flying(Next(t)) ~= flying)).
+}
+
+theory Assumption_4_3 : V{
+    ~(!t[Time]: Loop(t) => (land(t) & S_flying(Next(t)) ~= on_the_ground)).
+}
+
+theory Assumption_4_4 : V{
+    ~(!t[Time]: Loop(t) => (go_to_landing_zone(t) & S_at_landing_position(Next(t)) ~= yes)).
+}
+
+theory Assumption_4_5 : V{
+    ~(!t[Time]: Loop(t) => (configure_mission(t) & S_mission_configuration(Next(t)) ~= configured)).
+}
+
+theory Assumption_4_6 : V{
+    !t[Time] : S_flying(t) ~= S_flying(Next(t)) => (take_off(t) | land(t)).
+}
+
+theory Assumption_4_7 : V{
+    !t[Time]: S_mission_started(t) = yes => S_mission_started(Next(t)) = yes.
+}
+
+theory Assumption_4_8 : V{
+    !t[Time] : S_mission_configuration(t) = not_configured <=> S_at_landing_position(t) = unknown.
+}
+
+theory Assumption_4_9 : V{
+    // eventually always have enough battery
+    !t[Time] : Loop(t) => S_battery(t) = ok.
+}
+
+theory Assumption_4_10 : V{
+    // eventually always not being blocked
+    !t[Time] : Loop(t) => S_being_blocked(t) = no.
+}
+
+theory Assumption_4_11 : V{
+    // eventually always has stable communication
+    !t[Time] : Loop(t) => S_communication(t) = stable[:Type_S_communication].
+}
+
+theory Assumption_4_12 : V{
+    // eventually always has stable obstacle detection
+    !t[Time] : Loop(t) => S_obstacle_detection(t) = stable[:Type_S_obstacle_detection].
+}
+
+theory Assumption_4_13 : V{
+    !t[Time] : S_mission_abort_request(t) = no.
+}
+
+theory Assumption_4_14 : V{
+    // eventually always not being paused
+    !t[Time] : Loop(t) => S_manual_control_request(t) = off.
+}
+
+theory Assumption_4_15 : V{
+    // eventually have permission to start
+    ?t[Time] : S_mission_started(t) = yes.
+}
+
+theory Assumption_4_16 : V{
+    !t[Time] : S_mission_configuration(t) = configured => S_mission_configuration(Next(t)) = configured.
+}
+
+theory RecurrenceDiameterProperty : V{
+    !t[Time]:
+    (t < k) => (
+        S_at_landing_position(t) ~= S_at_landing_position(t + 1) &
+        S_communication(t) ~= S_communication(t + 1) &
+        S_mission_abort_request(t) ~= S_mission_abort_request(t + 1) &
+        S_battery(t) ~= S_battery(t + 1) &
+        S_manual_control_request(t) ~= S_manual_control_request(t + 1) &
+        S_being_blocked_notification(t) ~= S_being_blocked_notification(t + 1) &
+        S_critical_battery_notification(t) ~= S_critical_battery_notification(t + 1) &
+        S_pylon_inspection(t) ~= S_pylon_inspection(t + 1) &
+        S_obstacle_detection(t) ~= S_obstacle_detection(t + 1) &
+        S_flying(t) ~= S_flying(t + 1) &
+        S_mission_configuration(t) ~= S_mission_configuration(t + 1) &
+        S_low_battery_notification(t) ~= S_low_battery_notification(t + 1) &
+        S_obstacle_detection_failure_notification(t) ~= S_obstacle_detection_failure_notification(t + 1) &
+        S_communication_failure_notification(t) ~= S_communication_failure_notification(t + 1) &
+        S_mission_started(t) ~= S_mission_started(t + 1) &
+        S_being_blocked(t) ~= S_being_blocked(t + 1)
+    ).
+}
+
+include "sdw-policy-theory.idp"
+include "util.idp"
+
+procedure main(){  
+    problems = {
+        {
+            property = Property_1,
+            assumptions = {
+                Assumption_1_1,
+                Assumption_1_2,
+                Assumption_1_3
+            }
+        },
+        {
+            property = Property_2,
+            assumptions = {
+                Assumption_2_1,
+                Assumption_2_2,
+                Assumption_2_3
+            },
+        },
+        {
+            property = Property_3,
+            assumptions = {
+                Assumption_3_1,
+                Assumption_3_2
+            }
+        },
+        {
+            property = Property_4,
+            assumptions = {
+                Assumption_4_1,
+                Assumption_4_2,
+                Assumption_4_3,
+                Assumption_4_4,
+                Assumption_4_5,
+                Assumption_4_6,
+                Assumption_4_7,
+                Assumption_4_8,
+                Assumption_4_9,
+                Assumption_4_10,
+                Assumption_4_11,
+                Assumption_4_12,
+                Assumption_4_13,
+                Assumption_4_14,
+                Assumption_4_15,
+                Assumption_4_16
+            }
+        },
+    }
+
+    check_models(problems)
+    check_minimality(problems)
+}
+
+procedure check_models(problems) {
+    local file = io.open("sdw-times.txt", "w")
+    io.output(file)
+
+    for i, problem in ipairs(problems) do
+        print("Checking " .. getname(problem["property"]))
+        models, duration = generate_models(problem["property"], problem["assumptions"])
+
+        if #models ~= 0 then
+            print("The following property is violated: \n")
+            print(getname(problem["property"]))
+            printmodels(models)
+            break
+        else
+            print(getname(problem["property"]) .. " is correct.\n")
+        end
+
+        io.write("Property ", i, ": ", duration, "\n")
+    end
+
+    io.close(file)   
+}
+
+procedure check_minimality(problems) {
+    for _, problem in ipairs(problems) do
+        redundant_assumptions = {}
+        for i, assumption in ipairs(problem["assumptions"]) do
+            print("Checking minimality: " .. getname(assumption))
+            // remove that assumption
+            assumptions = clone_table(problem["assumptions"])
+            table.remove(assumptions, i)
+
+            models, _ = generate_models(problem["property"], assumptions)
+            if #models == 0 then
+                print("The following assumption is redundant: " .. getname(assumption))
+                table.insert(redundant_assumptions, assumption)
+            end
+        end
+
+        if table.getn(redundant_assumptions) == 0 then
+            print("The set of assumptions for the following property is minimal:" .. getname(problem["property"]))
+        end
+    end
+}

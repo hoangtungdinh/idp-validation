@@ -1,0 +1,22 @@
+procedure generate_models(property, assumptions) {
+    local combined = merge(TimeTheory, PolicyTheory)
+    combined = merge(combined, property)
+    for _, assumption in ipairs(assumptions) do
+        combined = merge(combined, assumption)
+    end
+
+    local start_time = os.clock()
+    local S = calculatedefinitions(combined,S)
+    local models = modelexpand(combined,S)
+    local end_time = os.clock()
+
+    return models, end_time - start_time
+}
+
+procedure clone_table(in_table) {
+    out_table = {}
+    for i, e in ipairs(in_table) do
+        out_table[i] = e
+    end
+    return out_table
+}
